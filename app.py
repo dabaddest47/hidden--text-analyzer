@@ -1,35 +1,30 @@
 import streamlit as st
-import cv2
-import numpy as np
 from PIL import Image
-from utils import extract_text, detect_blue_regions, guess_hidden_text
+import pytesseract
+import io
+
+st.set_page_config(page_title="Hidden Text Analyzer Bot", layout="centered")
 
 st.title("Hidden Text Analyzer Bot")
+st.write("Upload an image to detect and extract hidden or embedded text.")
 
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-if uploaded_file:
-    pil_img = Image.open(uploaded_file).convert("RGB")
-    image_np = np.array(pil_img)
-    image_cv = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+if uploaded_file is not None:
+    try:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # OCR
-    st.subheader("Extracted Text")
-    text = extract_text(image_cv)
-    st.text_area("Visible OCR Text", text, height=200)
+        # Run OCR
+        st.write("Processing image for hidden text...")
+        text = pytesseract.image_to_string(image)
 
-    # Detect Blue
-    st.subheader("Detected Hidden Areas (Blue)")
-    contours = detect_blue_regions(image_cv)
-    image_highlighted = image_np.copy()
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        cv2.rectangle(image_highlighted, (x, y), (x+w, y+h), (255, 0, 0), 2)
-    st.image(image_highlighted, caption="Highlighted Blue Regions")
-
-    # Guessing
-    st.subheader("Guessed Hidden Content")
-    guesses = guess_hidden_text(image_cv, contours)
-    for g in guesses:
-        st.markdown(f"**Guess:** {g['guess']}")
-        st.code(g['context'])
+        if text.strip():
+            st.subheader("Detected Text")
+            st.text_area("Text from Image", text, height=250)
+        else:
+            st.warning("No text was detected in the image.")
+    except Exception as e:
+        st.error(f"Something went wrong while processing the image: {e}")
+else:
+    st.info("Please upload an image to begin.")
